@@ -1,113 +1,113 @@
+import os
 import streamlit as st
+import tensorflow as tf
 import numpy as np
 import pickle
-import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
-from tensorflow.keras.backend import clear_session
-import os
+from PIL import Image
+import io
 
-# 🛠 **Force TensorFlow to use CPU-only mode**
+# Force TensorFlow to use CPU (Streamlit Cloud has no GPU support)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-tf.config.set_visible_devices([], "GPU")
 
-# 🔥 **Reduce precision to float16 for better CPU performance**
-tf.keras.backend.set_floatx("float16")
+# Define model paths
+MODEL1_PATH = "model1.keras"
+MODEL2_PATH = "model2.h5"
+META_MODEL_PATH = "meta_model.pkl"
 
-# 🚀 **Free up TensorFlow memory before loading models**
-clear_session()
-
-# 🌟 **Streamlit Page Configuration**
-st.set_page_config(page_title="Eye Disease Classifier", layout="wide")
-
-# 🎨 **Custom UI Styling**
-st.markdown("""
-    <style>
-    body { background-color: #0E1117; color: white; }
-    .stApp { background-color: #0E1117; }
-    .big-font { font-size:24px !important; font-weight: bold; color: #4CAF50; }
-    .small-font { font-size:14px !important; color: #aaaaaa; }
-    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { color: white; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# 📌 **Function to Load Models Safely**
-def load_model_safe(model_path):
+# Function to load models safely
+@st.cache_resource
+def load_model_safe(path, model_name):
     try:
-        model = load_model(model_path, compile=False)
+        model = tf.keras.models.load_model(path)
+        st.success(f"✅ Successfully loaded {model_name}")
         return model
     except Exception as e:
-        st.error(f"❌ Error loading {model_path}: {e}")
+        st.error(f"❌ Error loading {model_name}: {e}")
         return None
 
-# 🔄 **Load Models**
-model1 = load_model_safe("model2.h5")        # Model 1 expects (224, 224)
-model2 = load_model_safe("model1.keras")     # Model 2 expects (256, 256)
+# Load models
+model1 = load_model_safe(MODEL1_PATH, "Model 1")
+model2 = load_model_safe(MODEL2_PATH, "Model 2")
 
-# 🧠 **Load Meta-Classifier**
+# Load meta model
 try:
-    with open("meta_model.pkl", "rb") as f:
+    with open(META_MODEL_PATH, "rb") as f:
         meta_model = pickle.load(f)
+    st.success("✅ Successfully loaded meta_model.pkl")
 except Exception as e:
     st.error(f"❌ Error loading meta_model.pkl: {e}")
     meta_model = None
 
-# 🏷 **Disease Labels**
-disease_labels = ["Cataract", "Diabetic Retinopathy", "Glaucoma", "Macular Degeneration", "Normal"]
+# Function to preprocess images
+def preprocess_image(img, model_name):
+    """Resize and normalize the image based on the model's input requirements."""
+    if model_name == "model1":
+        target_size = (256, 256)
+    elif model_name == "model2":
+        target_size = (224, 224)
+    else:
+        raise ValueError("Invalid model name")
 
-# 🖼 **Function to Preprocess Image (Dynamic Resizing Based on Model)**
-def preprocess_image(img, target_size):
-    img_resized = img.resize(target_size)  # Resize using PIL
-    img_array = img_to_array(img_resized) / 255.0  # Normalize
+    img = img.resize(target_size)  # Resize using PIL
+    img_array = np.asarray(img) / 255.0  # Normalize
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     return img_array
 
-# 🔥 **Streamlit UI - Header**
-st.markdown("<h1 style='text-align: center; color: #333;'>👁️ Eye Disease Classification</h1>", unsafe_allow_html=True)
-st.markdown("<p class='big-font' style='text-align: center;'>Upload a Retinal Image for Disease Prediction</p>", unsafe_allow_html=True)
-st.write("---")
+# Streamlit UI
+st.set_page_config(page_title="Eye Disease Classifier", page_icon="👁️", layout="centered")
 
-# 📤 **File Upload**
-uploaded_file = st.file_uploader("📎 Upload an Image", type=["jpg", "png", "jpeg"])
+st.title("👁️ Eye Disease Classification")
+st.markdown("### Upload a Retinal Image for Disease Prediction")
+
+# File uploader
+uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    # 📷 **Display Uploaded Image**
-    st.image(uploaded_file, caption="📷 Uploaded Image", use_container_width=True)
+    image = Image.open(uploaded_file)
+    
+    # Display uploaded image
+    st.image(image, caption="📷 Uploaded Image", use_column_width=True)
 
-    # Load the image without resizing
-    image = load_img(uploaded_file)
+    # Extract and display image metadata
+    st.subheader("📊 Image Information:")
+    st.write(f"**Format:** {image.format}")
+    st.write(f"**Size:** {image.size} pixels")
 
-    # ✅ **Check if models are loaded before making predictions**
-    if model1 and model2 and meta_model:
-        try:
-            # 🏥 **Get Predictions from Both Models**
-            pred1 = model1.predict(preprocess_image(image, (224, 224))).flatten()
-            pred2 = model2.predict(preprocess_image(image, (256, 256))).flatten()
+    # Run model predictions
+    predictions = {}
 
-            # 📝 **Log Predictions for Debugging**
-            st.write(f"🔍 Model 1 Prediction: {pred1}")
-            st.write(f"🔍 Model 2 Prediction: {pred2}")
+    if model1:
+        img1 = preprocess_image(image, "model1")
+        pred1 = model1.predict(img1).flatten()
+        predictions["Model 1"] = pred1
+    else:
+        pred1 = None
 
-            # 🔗 **Combine Model Predictions**
-            combined_pred = np.concatenate([pred1, pred2])
+    if model2:
+        img2 = preprocess_image(image, "model2")
+        pred2 = model2.predict(img2).flatten()
+        predictions["Model 2"] = pred2
+    else:
+        pred2 = None
 
-            # 📏 **Ensure Feature Vector Matches Expected Input Size (9 Features)**
-            if len(combined_pred) != 9:
-                if len(combined_pred) > 9:
-                    combined_pred = combined_pred[:9]  # Trim extra features
-                else:
-                    combined_pred = np.pad(combined_pred, (0, 9 - len(combined_pred)), mode="constant")  # Pad missing features
+    # Combine predictions using meta model
+    if pred1 is not None and pred2 is not None and meta_model:
+        final_pred = meta_model.predict([pred1, pred2])
+        confidence = np.max(final_pred) * 100  # Get confidence score
 
-            # 🤖 **Meta-Classifier Prediction**
-            final_pred = meta_model.predict([combined_pred])[0]
-            disease_name = disease_labels[final_pred]
+        # Display results
+        st.subheader("🩺 Disease Prediction:")
+        st.write(f"**Prediction:** {final_pred}")
+        st.write(f"**Confidence Score:** {confidence:.2f}%")
 
-            # 🎯 **Show Final Prediction**
-            st.markdown(f"<p class='big-font' style='text-align: center; color: #ff5733;'>🔍 Prediction: {disease_name}</p>", unsafe_allow_html=True)
+        # Download button for prediction results
+        result_text = f"Prediction: {final_pred}\nConfidence Score: {confidence:.2f}%"
+        result_file = io.BytesIO(result_text.encode())
+        st.download_button(label="⬇️ Download Results", data=result_file, file_name="prediction.txt", mime="text/plain")
 
-        except Exception as e:
-            st.error(f"❌ Prediction Error: {e}")
+    else:
+        st.error("⚠️ Could not generate prediction. Ensure models are loaded correctly.")
 
-# 🚀 **Footer**
+# Footer
 st.markdown("---")
-st.markdown("<p class='small-font' style='text-align: center;'>Made with ❤️ using Streamlit</p>", unsafe_allow_html=True)
+st.markdown("👨‍⚕️ **Developed for AI-powered Eye Disease Detection** | 🏥 **Medical AI Project**")
