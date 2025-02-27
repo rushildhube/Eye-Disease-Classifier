@@ -12,8 +12,9 @@ Ever wondered if AI could help detect eye diseases just from an image? That's ex
 - 📂 **Runs on Your Device**: No need for a high-end GPU – works efficiently on local machines.
 
 ## 🖥️ Demo
-![Eye Disease Classifier]([https://via.placeholder.com/800x400?text=Demo+Image](https://eye-disease-classifier.streamlit.app/))  
-👉 **[Live Demo](#)** (If deployed, add the link here)
+![Eye Disease Classifier](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/MyStrangeIris.JPG/1024px-MyStrangeIris.JPG)  
+
+👉 **[Live Demo](https://eye-disease-classifier.streamlit.app/)**
 
 ## 🛠️ Installation & Setup
 ### 1️⃣ Clone the Repository
