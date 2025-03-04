@@ -22,6 +22,25 @@ Ever wondered if AI could help detect eye diseases just from an image? That's ex
 git clone https://github.com/rushildhube/Eye-Disease-Classifier.git
 cd Eye-Disease-Classifier
 ```
+## Disease Prediction UI
+
+![alt text](outputs/UI.png)
+
+## Eye Disease Classifier Accuracy and Training Graphs
+
+#### Accuracy Over Epochs
+![alt text](outputs/accuracy_over_epochs.png)
+
+#### Loss Over Epochs
+![alt text](outputs/loss_over_epochs.png)
+
+## Disease Prediction Output in VSCode
+
+![alt text](outputs/predicted_in_vscode.png)
+
+## Disease Prediction Output in Streamlit
+
+![alt text](outputs/final_prediction_streamit.png)
 
 ### 2️⃣ Install Dependencies
 Make sure you have Python installed (preferably **Python 3.8+**).
